@@ -1,27 +1,9 @@
 const express = require('express');
 const app = module.exports = express();
 const jwt = require('jsonwebtoken');
+const CredentialsService = require('../service/cretendialsService.js');
 
-app.post('/login', (req, res, next) => {
-  if (req.body.user === 'abc' && req.body.password === '123') {
-    const id = 1;
-    const token = jwt.sign({ id }, process.env.SECRET, {
-      expiresIn: 300 // expires in 5min
-    });
-    return res.json({ auth: true, token: token });
-  }
-  res.status(500).json({ message: 'Login inválido!' });
-});
-
-app.post('/logout', function (req, res) {
-  res.json({ auth: false, token: null });
-});
-
-app.get('/dados', verifyJWT, function (req, res) {
-  res.json([{ id: 1, nome: "teste1" }, { id: 2, nome: "teste2" }]);
-});
-
-function verifyJWT(req, res, next) {
+const verifyJWT = (req, res, next) => {
   const token = req.headers['token'];
 
   if (!token) return res.status(401).json({ auth: false, message: 'No token provided.' });
@@ -32,3 +14,35 @@ function verifyJWT(req, res, next) {
     next();
   });
 }
+
+app.post('/register', (req, res, next) => {
+  const { user, password } = req.body;
+  const success = CredentialsService.registerUser(user, password);
+  res.send(success);
+});
+
+app.post('/login', (req, res, next) => {
+  const { user, password } = req.body;
+  const authUser = CredentialsService.verify(user, password);
+
+  if (authUser) {
+    const userId = authUser.id;
+
+    const token = jwt.sign({ userId }, process.env.SECRET, {
+      expiresIn: 300 // expires in 5min
+    });
+
+    return res.json({ auth: true, token: token });
+  }
+
+  res.status(500).json({ message: 'Login inválido!' });
+});
+
+app.post('/logout', (req, res) => {
+  res.json({ auth: false, token: null });
+});
+
+app.get('/dados', verifyJWT, (req, res) => {
+  res.json([{ dados: true }]);
+});
+
